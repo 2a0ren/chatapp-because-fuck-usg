@@ -5,7 +5,7 @@ from tkinter import scrolledtext
 # Connect to the server
 def connect_to_server():
     ip = entry_ip.get()
-    port = 5555  # Default port
+    port = 8675 # Default port
     try:
         client_socket.connect((ip, port))
         text_area.insert(tk.END, f"Connected to {ip} on port {port}\n")

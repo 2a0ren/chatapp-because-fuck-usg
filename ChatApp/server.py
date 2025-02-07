@@ -66,7 +66,7 @@ def send_message_from_ui():
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
-    port = 5555
+    port = 8675
     local_ip = get_local_ip()
     
     # Bind to the server's IP and port
