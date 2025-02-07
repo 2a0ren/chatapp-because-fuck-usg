@@ -85,23 +85,27 @@ def start_server():
 server_window = tk.Tk()
 server_window.title("Server Chat UI")
 
+# Add instructions to the server UI
+instruction_label = tk.Label(server_window, text="Server is running...\nWaiting for clients to connect.", font=("Arial", 14))
+instruction_label.grid(row=0, column=0, columnspan=2, pady=10)
+
 server_text_area = scrolledtext.ScrolledText(server_window, width=50, height=15)
-server_text_area.grid(row=0, column=0, columnspan=2)
+server_text_area.grid(row=1, column=0, columnspan=2)
 
 server_ip_label = tk.Label(server_window, text="Server IP: Not available", font=("Arial", 12))
-server_ip_label.grid(row=1, column=0, padx=10, pady=10)
+server_ip_label.grid(row=2, column=0, padx=10, pady=10)
 
 server_port_label = tk.Label(server_window, text="Server Port: Not available", font=("Arial", 12))
-server_port_label.grid(row=2, column=0, padx=10, pady=10)
+server_port_label.grid(row=3, column=0, padx=10, pady=10)
 
 server_status_label = tk.Label(server_window, text="Server Status: Waiting...", font=("Arial", 12))
-server_status_label.grid(row=3, column=0, columnspan=2, pady=10)
+server_status_label.grid(row=4, column=0, columnspan=2, pady=10)
 
 server_message_entry = tk.Entry(server_window, width=40)
-server_message_entry.grid(row=4, column=0, padx=10)
+server_message_entry.grid(row=5, column=0, padx=10)
 
 server_send_button = tk.Button(server_window, text="Send", command=send_message_from_ui)
-server_send_button.grid(row=4, column=1)
+server_send_button.grid(row=5, column=1)
 
 # Run the server in a separate thread to not block the UI
 server_thread = threading.Thread(target=start_server, daemon=True)
