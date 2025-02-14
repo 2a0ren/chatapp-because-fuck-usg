@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: OmegaChatApp
+Version: 1.0
+Requires-Dist: Flask>=2.0.0
+Requires-Dist: Flask-SocketIO>=5.0.0
+Requires-Dist: pyngrok>=5.0.0
+Requires-Dist: python-socketio>=5.0.0
+Requires-Dist: PyQt5>=5.15.0

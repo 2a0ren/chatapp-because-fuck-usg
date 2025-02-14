@@ -10,6 +10,6 @@ setup(
         "Flask-SocketIO>=5.0.0",
         "pyngrok>=5.0.0",
         "python-socketio>=5.0.0",
-        "PyQt5>=5.15.0"  # (Not used in final code, but may be needed by some systems; our GUI is built with Tkinter.)
+        "PyQt5>=5.15.0"
     ],
 )

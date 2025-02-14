@@ -1,0 +1,8 @@
+client.py
+server.py
+setup.py
+OmegaChatApp.egg-info/PKG-INFO
+OmegaChatApp.egg-info/SOURCES.txt
+OmegaChatApp.egg-info/dependency_links.txt
+OmegaChatApp.egg-info/requires.txt
+OmegaChatApp.egg-info/top_level.txt
