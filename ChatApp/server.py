@@ -1,129 +1,96 @@
+# server.py
+import sys
 import socket
 import threading
+from flask import Flask
+from flask_socketio import SocketIO, send
 import tkinter as tk
-from tkinter import scrolledtext
-import socket as sckt
+from tkinter import scrolledtext, messagebox
+from pyngrok import ngrok
 
-clients = {}
-usernames = {}
+# ----- Configuration -----
+# Use your static ngrok domain below.
+STATIC_NGROK_DOMAIN = "ferret-notable-jaybird.ngrok-free.app"
+# The port on which the local server will run (ngrok will tunnel to this port)
+SERVER_PORT = 80  
 
-# Function to get local IP address of the machine
-def get_local_ip():
-    hostname = sckt.gethostname()
-    local_ip = sckt.gethostbyname(hostname)
-    return local_ip
+# ----- Flask and SocketIO Setup -----
+app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Handle communication with a single client
-def handle_client(client_socket, client_address):
-    print(f"{client_address} connected")
-    
-    # Send prompt for username
-    client_socket.send("Enter your username:".encode('utf-8'))
-    username = client_socket.recv(1024).decode('utf-8')
-    usernames[client_socket] = username
-    clients[client_socket] = client_address
+@socketio.on('message')
+def handle_message(data):
+    # Broadcast received messages to all clients.
+    send(data, broadcast=True)
 
-    # Notify all clients that a new user has connected
-    broadcast(f"{username} has joined the chat!", client_socket)
+# ----- Tkinter GUI for Server -----
+class ServerGUI(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Omega ChatApp - Server")
+        self.geometry("500x600")
+        self.config(bg="#f0f0f0")
+        self.create_widgets()
+        # Start the Flask server in a separate thread.
+        threading.Thread(target=self.run_server, daemon=True).start()
 
-    while True:
+    def create_widgets(self):
+        # Display the static ngrok URL (clients use this to connect)
+        self.url_label = tk.Label(self, text=f"Server URL: http://{STATIC_NGROK_DOMAIN}", font=("Arial", 12), bg="#f0f0f0")
+        self.url_label.pack(pady=10)
+        
+        # Optionally, display the local IP (for info only)
+        self.local_ip_label = tk.Label(self, text=f"Local IP: {self.get_local_ip()}", font=("Arial", 10), bg="#f0f0f0")
+        self.local_ip_label.pack(pady=5)
+        
+        # Chat log area
+        self.chat_log = scrolledtext.ScrolledText(self, width=60, height=20, state="disabled", wrap=tk.WORD)
+        self.chat_log.pack(pady=10)
+        
+        # Input field for server messages
+        self.input_box = tk.Entry(self, width=50)
+        self.input_box.pack(pady=5)
+        
+        # Send button
+        self.send_button = tk.Button(self, text="Send", command=self.send_server_message, bg="green", fg="white")
+        self.send_button.pack(pady=5)
+        
+        # Info label
+        self.info_label = tk.Label(self, text="Clients connect using the above URL", font=("Arial", 10), bg="#f0f0f0")
+        self.info_label.pack(pady=5)
+
+    def send_server_message(self):
+        message = self.input_box.get().strip()
+        if message:
+            self.input_box.delete(0, tk.END)
+            # Broadcast the message
+            data = {'username': 'Server', 'message': message}
+            send(data, broadcast=True)
+            self.append_message(f"Server: {message}")
+
+    def append_message(self, message):
+        self.chat_log.config(state="normal")
+        self.chat_log.insert(tk.END, message + "\n")
+        self.chat_log.yview(tk.END)
+        self.chat_log.config(state="disabled")
+
+    def get_local_ip(self):
         try:
-            # Receive messages from the client
-            message = client_socket.recv(1024).decode('utf-8')
-            if message.lower() == 'exit':
-                break
-            broadcast(f"{username}: {message}", client_socket)
-        except Exception as e:
-            print(f"Error: {e}")
-            break
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "Unknown"
 
-    # Remove the client from the dictionary
-    del clients[client_socket]
-    del usernames[client_socket]
-    client_socket.close()
+    def run_server(self):
+        # Start the Flask-SocketIO server
+        socketio.run(app, host="0.0.0.0", port=SERVER_PORT, debug=False)
 
-    # Notify all clients that a user has left
-    broadcast(f"{username} has left the chat.", client_socket)
+def main():
+    app_gui = ServerGUI()
+    app_gui.mainloop()
 
-# Broadcast message to all clients
-def broadcast(message, sender_socket=None):
-    for client in clients:
-        if client != sender_socket:
-            try:
-                client.send(message.encode('utf-8'))
-            except:
-                pass
-
-# Send message from server UI
-def send_message_from_ui():
-    message = server_message_entry.get()
-    if message:
-        broadcast(f"Server: {message}")
-        server_text_area.insert(tk.END, f"Server: {message}\n")
-        server_message_entry.delete(0, tk.END)
-
-# Set up the server
-def start_server():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    port = 8675
-    local_ip = get_local_ip()
-    
-    # Bind to the server's IP and port
-    try:
-        server.bind((local_ip, port))
-        server.listen(5)
-        server_ip_label.config(text=f"Server IP: {local_ip}")
-        server_port_label.config(text=f"Server Port: {port}")
-        server_status_label.config(text=f"Server started on {local_ip}:{port}")
-        print(f"Server started on {local_ip}:{port}")
-    except Exception as e:
-        print(f"Server error: {e}")
-        server_status_label.config(text=f"Error starting server: {e}")
-        return
-    
-    while True:
-        try:
-            client_socket, client_address = server.accept()
-            print(f"Connection accepted from {client_address}")
-            # Start a new thread to handle the client
-            thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
-            thread.start()
-        except Exception as e:
-            print(f"Error while accepting connection: {e}")
-
-# Set up the server UI
-server_window = tk.Tk()
-server_window.title("Server Chat UI")
-
-# Set the background color and the font style for a more modern look
-server_window.configure(bg="#f0f0f0")
-font_style = ("Helvetica", 12)
-
-# Add instructions to the server UI
-instruction_label = tk.Label(server_window, text="Server is running...\nWaiting for clients to connect.", font=("Arial", 14), bg="#f0f0f0")
-instruction_label.grid(row=0, column=0, columnspan=2, pady=10)
-
-server_text_area = scrolledtext.ScrolledText(server_window, width=50, height=15, font=font_style)
-server_text_area.grid(row=1, column=0, columnspan=2, padx=10, pady=10)
-
-server_ip_label = tk.Label(server_window, text="Server IP: Not available", font=font_style, bg="#f0f0f0")
-server_ip_label.grid(row=2, column=0, padx=10, pady=10)
-
-server_port_label = tk.Label(server_window, text="Server Port: Not available", font=font_style, bg="#f0f0f0")
-server_port_label.grid(row=3, column=0, padx=10, pady=10)
-
-server_status_label = tk.Label(server_window, text="Server Status: Waiting...", font=font_style, bg="#f0f0f0")
-server_status_label.grid(row=4, column=0, columnspan=2, pady=10)
-
-server_message_entry = tk.Entry(server_window, width=40, font=font_style)
-server_message_entry.grid(row=5, column=0, padx=10)
-
-server_send_button = tk.Button(server_window, text="Send", command=send_message_from_ui, font=font_style, bg="#4CAF50", fg="white")
-server_send_button.grid(row=5, column=1, padx=10)
-
-# Run the server in a separate thread to not block the UI
-server_thread = threading.Thread(target=start_server, daemon=True)
-server_thread.start()
-
-server_window.mainloop()
+if __name__ == "__main__":
+    main()
